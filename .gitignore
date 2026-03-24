@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Terraform Local State
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+*.tfvars
+tfplan.txt
+
+# Python
+__pycache__/
+*.pyc
+
+# Local deployment artifacts
+*.zip
+
+# Local notes and data dumps
+designdoc.txt
+brainstoming.txt
+all_stat_vars.txt
+ingestion/observability_survey.csv
+ingestion/upload_observability.py
+dataone/

@@ -26,3 +26,9 @@ variable "folder_id" {
   type        = string
   default     = ""
 }
+
+variable "observability_sheet_url" {
+  description = "The Google Sheets URL for the Category 3 Observability survey answers"
+  type        = string
+  default     = ""
+}
