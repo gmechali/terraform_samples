@@ -5,7 +5,7 @@ SELECT
   archetype,
   CASE
     WHEN REGEXP_CONTAINS(service_name, r"(?i)prod") THEN "Prod"
-    WHEN REGEXP_CONTAINS(service_name, r"(?i)api\.datacommons\.org") THEN "Prod"
+    WHEN REGEXP_CONTAINS(service_name, r"(?i)::api\.datacommons\.org") THEN "Prod"
     WHEN REGEXP_CONTAINS(service_name, r"(?i)autorater") THEN "Prod"
     WHEN REGEXP_CONTAINS(service_name, r"(?i)staging") THEN "Staging"
     WHEN REGEXP_CONTAINS(service_name, r"(?i)autopush") THEN "Autopush"
