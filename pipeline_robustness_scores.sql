@@ -24,7 +24,6 @@ SELECT
      
   -- Component Parts (Placeholders default to 0% to highlight missing integrations)
   0.0 AS code_lead_time_score,
-  0.0 AS feature_flag_score,
   
   -- Final Pipeline Robustness Score based on Archetype
   -- Sync / API: 30% Success, 30% Cadence, 30% Lead Time, 10% Feature Flag
@@ -32,10 +31,10 @@ SELECT
   IF(
     REGEXP_CONTAINS(r.archetype, r"(?i)async|pipeline|cron|ingest"),
     (IFNULL((COUNTIF(d.status IN ('SUCCESS', 'SUCCEEDED')) / NULLIF(COUNT(d.publish_time), 0)) * 100.0, 0.0) * 0.3) + 
-      (IF(IFNULL(DATE_DIFF(CURRENT_DATE(), DATE(MAX(IF(d.status IN ('SUCCESS', 'SUCCEEDED'), d.publish_time, NULL))), DAY), 999) > 30, 0.0, (COUNT(DISTINCT IF(d.status IN ('SUCCESS', 'SUCCEEDED'), EXTRACT(MONTH FROM d.publish_time), NULL)) / 6.0) * 100.0) * 0.4) + 
+      (IF(IFNULL(DATE_DIFF(CURRENT_DATE(), DATE(MAX(IF(d.status IN ('SUCCESS', 'SUCCEEDED'), d.publish_time, NULL))), DAY), 999) > 30, 0.0, (COUNT(DISTINCT IF(d.status IN ('SUCCESS', 'SUCCEEDED'), EXTRACT(MONTH FROM d.publish_time), NULL)) / LEAST(6, DATE_DIFF(CURRENT_DATE(), DATE '2026-03-01', MONTH) + 1)) * 100.0) * 0.4) + 
       (0.0 * 0.3),
     (IFNULL((COUNTIF(d.status IN ('SUCCESS', 'SUCCEEDED')) / NULLIF(COUNT(d.publish_time), 0)) * 100.0, 0.0) * 0.3) + 
-      (IF(IFNULL(DATE_DIFF(CURRENT_DATE(), DATE(MAX(IF(d.status IN ('SUCCESS', 'SUCCEEDED'), d.publish_time, NULL))), DAY), 999) > 30, 0.0, (COUNT(DISTINCT IF(d.status IN ('SUCCESS', 'SUCCEEDED'), EXTRACT(MONTH FROM d.publish_time), NULL)) / 6.0) * 100.0) * 0.3) + 
+      (IF(IFNULL(DATE_DIFF(CURRENT_DATE(), DATE(MAX(IF(d.status IN ('SUCCESS', 'SUCCEEDED'), d.publish_time, NULL))), DAY), 999) > 30, 0.0, (COUNT(DISTINCT IF(d.status IN ('SUCCESS', 'SUCCEEDED'), EXTRACT(MONTH FROM d.publish_time), NULL)) / LEAST(6, DATE_DIFF(CURRENT_DATE(), DATE '2026-03-01', MONTH) + 1)) * 100.0) * 0.3) + 
       (0.0 * 0.3) + 
       (0.0 * 0.1)
   ) AS pipeline_score

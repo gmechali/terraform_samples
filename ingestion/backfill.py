@@ -5,7 +5,7 @@ from collections import defaultdict
 from google.cloud import monitoring_v3
 from google.cloud import bigquery
 
-PROJECT_ID = os.environ.get("PROJECT_ID", "datcom-website-dev")
+PROJECT_ID = os.environ.get("PROJECT_ID", "datcom-ci")
 BQ_DATASET = os.environ.get("BQ_DATASET", "oncall_health")
 BQ_TABLE = os.environ.get("BQ_TABLE", "raw_metrics")
 
@@ -122,5 +122,5 @@ def backfill(start_days_ago=23, end_days_ago=51):
             print("  -> No traffic found.")
 
 if __name__ == "__main__":
-    # Query specific date range (23 days ago = March 1, 51 days ago = Feb 1)
-    backfill(23, 51)
+    # Query specific date range (1 day ago to 42 days ago)
+    backfill(2, 42)

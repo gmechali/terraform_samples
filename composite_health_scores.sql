@@ -20,11 +20,17 @@ SELECT
   COALESCE(o.observability_score, 0.0) AS cat3_observability_score,
   
   -- Category 2: Pipeline Robustness Score & Components
-  COALESCE(p.pipeline_score, 0.0) AS cat2_pipeline_score,
+  -- We dynamically inject the Survey-Sourced Feature Flag score back into the final Pipeline calculation!
+  IF(
+    REGEXP_CONTAINS(r.archetype, r"(?i)async|pipeline|cron|ingest"),
+    COALESCE(p.pipeline_score, 0.0), 
+    COALESCE(p.pipeline_score, 0.0) + (COALESCE(o.feature_flag_score, 0.0) * 0.1)
+  ) AS cat2_pipeline_score,
+  
   COALESCE(p.cadence_score, 0.0) AS pipeline_cadence_score,
   COALESCE(p.delivery_success_score, 0.0) AS pipeline_delivery_success_score,
   COALESCE(p.code_lead_time_score, 0.0) AS pipeline_code_lead_time_score,
-  COALESCE(p.feature_flag_score, 0.0) AS pipeline_feature_flag_score,
+  COALESCE(o.feature_flag_score, 0.0) AS pipeline_feature_flag_score,
   p.days_since_last_deploy,
   p.months_deployed_in_window,
   p.last_successful_deployment,
@@ -34,7 +40,12 @@ SELECT
   -- Formula: 50% Performance + 25% Observability + 25% Pipeline Robustness
   (r.performance_score * 0.50) + 
   (COALESCE(o.observability_score, 0.0) * 0.25) + 
-  (COALESCE(p.pipeline_score, 0.0) * 0.25) AS composite_service_health_score
+  (
+    IF(REGEXP_CONTAINS(r.archetype, r"(?i)async|pipeline|cron|ingest"),
+       COALESCE(p.pipeline_score, 0.0),
+       COALESCE(p.pipeline_score, 0.0) + (COALESCE(o.feature_flag_score, 0.0) * 0.1)
+    )
+  ) * 0.25 AS composite_service_health_score
 
 FROM `${hub_project_id}.${dataset_id}.service_performance_scores` r
 LEFT JOIN `${hub_project_id}.${dataset_id}.observability_scores` o

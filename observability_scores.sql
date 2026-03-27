@@ -1,5 +1,9 @@
 SELECT
   service_name,
+  
+  -- Extract Feature Flag compliance explicitly (Maps "TRUE" string to 100.0)
+  IF(TRIM(LOWER(CAST(has_feature_flags AS STRING))) IN ('true', 'yes', 'y', '1', 't'), 100.0, 0.0) AS feature_flag_score,
+  
   -- Calculate boolean TRUE string representations into ints (1 or 0)
   -- The math sums the 'true' answers and divides by 8.0, yielding the 0.0 - 1.0 Observability Score
   (

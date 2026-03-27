@@ -255,7 +255,8 @@ resource "google_bigquery_table" "observability_survey_sheet" {
   {"name": "has_blackbox_prober", "type": "STRING"},
   {"name": "has_latency_threshold", "type": "STRING"},
   {"name": "has_staleness_alert", "type": "STRING"},
-  {"name": "has_silent_failure_monitor", "type": "STRING"}
+  {"name": "has_silent_failure_monitor", "type": "STRING"},
+  {"name": "has_feature_flags", "type": "STRING"}
 ]
 EOF
   

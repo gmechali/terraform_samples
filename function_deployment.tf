@@ -18,20 +18,32 @@ resource "google_storage_bucket_object" "code_zip" {
   source = data.archive_file.function_source.output_path
 }
 
-# 1st Gen Cloud Function
-resource "google_cloudfunctions_function" "metrics_ingestion" {
-  name        = "datacommons-health-ingestion"
+# 2nd Gen Cloud Function (Runs natively on Cloud Run)
+resource "google_cloudfunctions2_function" "metrics_ingestion" {
+  name        = "datacommons-health-ingest-v2"
+  location    = var.region
   description = "Ingests Data Commons Cloud Monitoring metrics into BigQuery"
-  runtime     = "python310"
 
-  available_memory_mb   = 256
-  source_archive_bucket = google_storage_bucket.function_code.name
-  source_archive_object = google_storage_bucket_object.code_zip.name
-  trigger_http          = true
-  entry_point           = "fetch_and_write_metrics"
-  
-  environment_variables = {
-    PROJECT_ID = var.hub_project_id
+  build_config {
+    runtime     = "python310"
+    entry_point = "fetch_and_write_metrics"
+
+    source {
+      storage_source {
+        bucket = google_storage_bucket.function_code.name
+        object = google_storage_bucket_object.code_zip.name
+      }
+    }
+  }
+
+  service_config {
+    max_instance_count = 1
+    available_memory   = "256M"
+    timeout_seconds    = 60
+
+    environment_variables = {
+      PROJECT_ID = var.hub_project_id
+    }
   }
 }
 
@@ -44,16 +56,27 @@ resource "google_cloud_scheduler_job" "daily_ingestion" {
   
   http_target {
     http_method = "GET"
-    uri         = google_cloudfunctions_function.metrics_ingestion.https_trigger_url
+    uri         = google_cloudfunctions2_function.metrics_ingestion.service_config[0].uri
+    
+    # We use OIDC routing for secure service-to-service communication
+    oidc_token {
+      service_account_email = google_service_account.scheduler_sa.email
+    }
   }
 }
 
-# Allow unauthenticated invocations so the Scheduler can trigger it easily
-resource "google_cloudfunctions_function_iam_member" "invoker" {
-  project        = google_cloudfunctions_function.metrics_ingestion.project
-  region         = google_cloudfunctions_function.metrics_ingestion.region
-  cloud_function = google_cloudfunctions_function.metrics_ingestion.name
+# Create a dedicated Service Account for the Scheduler
+resource "google_service_account" "scheduler_sa" {
+  account_id   = "health-scheduler-sa"
+  display_name = "Cloud Scheduler SA for Health Metrics"
+}
+
+# Grant the Scheduler SA permission to invoke the Cloud Run function
+resource "google_cloud_run_service_iam_member" "invoker" {
+  project  = google_cloudfunctions2_function.metrics_ingestion.project
+  location = google_cloudfunctions2_function.metrics_ingestion.location
+  service  = google_cloudfunctions2_function.metrics_ingestion.name
   
-  role   = "roles/cloudfunctions.invoker"
-  member = "allUsers"
+  role   = "roles/run.invoker"
+  member = "serviceAccount:${google_service_account.scheduler_sa.email}"
 }
