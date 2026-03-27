@@ -6,7 +6,7 @@ SELECT
   JSON_EXTRACT_SCALAR(data, '$.tags[0]') AS service_name
 FROM `${hub_project_id}.${dataset_id}.cloud_builds_raw`
 WHERE JSON_EXTRACT_SCALAR(data, '$.buildTriggerId') NOT LIKE 'cloud-deploy-project-%'
-
+  AND JSON_EXTRACT_SCALAR(data, '$.status') IN ('SUCCESS', 'FAILURE', 'TIMEOUT')
 UNION ALL
 
 SELECT 
@@ -32,3 +32,4 @@ UNNEST(
   END
 ) AS service_name
 WHERE JSON_EXTRACT_SCALAR(attributes, '$.ResourceType') = 'Rollout'
+  AND UPPER(JSON_EXTRACT_SCALAR(attributes, '$.Action')) IN ('SUCCEED', 'FAILED')
