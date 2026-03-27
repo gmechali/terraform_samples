@@ -19,15 +19,25 @@ SELECT
   -- We COALESCE to 0.0 in case a service hasn't been added to the Google Sheet yet
   COALESCE(o.observability_score, 0.0) AS cat3_observability_score,
   
-  -- Category 2: Pipeline Robustness (Placeholder 100.0 until Phase 2 is implemented)
-  100.0 AS cat2_pipeline_score,
+  -- Category 2: Pipeline Robustness Score & Components
+  COALESCE(p.pipeline_score, 0.0) AS cat2_pipeline_score,
+  COALESCE(p.cadence_score, 0.0) AS pipeline_cadence_score,
+  COALESCE(p.delivery_success_score, 0.0) AS pipeline_delivery_success_score,
+  COALESCE(p.code_lead_time_score, 0.0) AS pipeline_code_lead_time_score,
+  COALESCE(p.feature_flag_score, 0.0) AS pipeline_feature_flag_score,
+  p.days_since_last_deploy,
+  p.months_deployed_in_window,
+  p.last_successful_deployment,
+  p.total_deployments_in_window,
   
   -- FINAL COMPOSITE SERVICE HEALTH SCORE
   -- Formula: 50% Performance + 25% Observability + 25% Pipeline Robustness
   (r.performance_score * 0.50) + 
   (COALESCE(o.observability_score, 0.0) * 0.25) + 
-  (100.0 * 0.25) AS composite_service_health_score
+  (COALESCE(p.pipeline_score, 0.0) * 0.25) AS composite_service_health_score
 
 FROM `${hub_project_id}.${dataset_id}.service_performance_scores` r
 LEFT JOIN `${hub_project_id}.${dataset_id}.observability_scores` o
-ON r.service_name = o.service_name
+  ON r.service_name = o.service_name
+LEFT JOIN `${hub_project_id}.${dataset_id}.pipeline_robustness_scores` p
+  ON r.service_name = p.service_name

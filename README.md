@@ -53,3 +53,25 @@ Once the Terraform runs successfully, go to the BigQuery UI in the GCP Console f
 
 ### 5. Hook up Looker
 Point your Looker dashboard directly to the `final_service_health_scores` view in BigQuery. Looker will now reflect automated, daily health scores for all your labeled (`datacommons-service`) GCP resources!
+
+## Remaining Steps & Placeholders
+While the core pipeline is fully operational for GKE Cloud Deploy targets, there are a few remaining integrations required to complete the complete DORA metrics scorecard.
+
+### 1. Update Cloud Build Tags
+For services that deploy natively through Cloud Build (like Cloud Run or Cloud Functions), you must explicitly define a custom tag in the source repository's `cloudbuild.yaml` so the BigQuery Log Sink can properly attribute the deploy event to the correct performance scorecard.
+
+Add a `tags` array to your Cloud Build configuration matching your desired service name (e.g., `cloudrun::dc-dev`):
+```yaml
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/my-project/my-image', '.']
+
+# Add this to explicitly map the deployment to your Looker dashboard!
+tags: ['cloudrun::dc-dev']
+```
+
+### 2. Implement Remaining Scoring Placeholders
+The `pipeline_robustness_scores.sql` materialized view currently hardcodes two wildcard DORA metrics to `0.0` because their data sources have not yet been integrated into the Hub project. These act as placeholders in your Looker dashboard until you build the telemetry:
+
+1. **Code Lead Time Score (`code_lead_time_score`)**: Will require integrating GitHub/Gerrit commit timestamps against Cloud Build completion timestamps to measure the velocity of code landing in production.
+2. **Feature Flag Score (`feature_flag_score`)**: Will require integrating internal Data Commons feature flag telemetry (e.g., the JSON config files) to grade services on their safe progressive-rollout compliance.
