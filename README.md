@@ -64,7 +64,7 @@ For services that deploy natively through Cloud Build instead of Cloud Deploy (l
 Add a `tags` array to your Cloud Build configuration matching your desired service name:
 ```yaml
 # Add this to explicitly map the deployment to your Looker dashboard!
-tags: ['cloudrun::dc-dev']
+tags: ['cloudrun--dc-dev']
 ```
 
 ### 2. Automate the Final DORA Metric (Lead Time)

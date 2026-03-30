@@ -47,7 +47,7 @@ def backfill(start_days_ago=23, end_days_ago=51):
                 for result in count_results:
                     raw_name = result.resource.labels.get(source['service_label'])
                     if not raw_name or (source['prefix'] == 'endpoints' and raw_name.endswith('.googleapis.com')): continue
-                    service_name = f"{source['prefix']}::{raw_name}"
+                    service_name = f"{source['prefix']}--{raw_name}"
                     if result.points:
                         val = result.points[0].value.int64_value
                         metrics_by_service[service_name]["total_requests"] += val
@@ -68,7 +68,7 @@ def backfill(start_days_ago=23, end_days_ago=51):
                 for result in p50_results:
                     raw_name = result.resource.labels.get(source['service_label'])
                     if not raw_name or (source['prefix'] == 'endpoints' and raw_name.endswith('.googleapis.com')): continue
-                    service_name = f"{source['prefix']}::{raw_name}"
+                    service_name = f"{source['prefix']}--{raw_name}"
                     if result.points:
                         val = result.points[0].value.double_value
                         if source['prefix'] == 'endpoints': val *= 1000.0
@@ -82,7 +82,7 @@ def backfill(start_days_ago=23, end_days_ago=51):
                 for result in p95_results:
                     raw_name = result.resource.labels.get(source['service_label'])
                     if not raw_name or (source['prefix'] == 'endpoints' and raw_name.endswith('.googleapis.com')): continue
-                    service_name = f"{source['prefix']}::{raw_name}"
+                    service_name = f"{source['prefix']}--{raw_name}"
                     if result.points:
                         val = result.points[0].value.double_value
                         if source['prefix'] == 'endpoints': val *= 1000.0

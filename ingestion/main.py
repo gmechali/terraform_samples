@@ -94,7 +94,7 @@ def fetch_and_write_metrics(request):
             if source['prefix'] == 'endpoints' and raw_name.endswith('.googleapis.com'): continue
             
             # Prefix the service to easily distinguish GKE vs Cloud Run in the DB
-            service_name = f"{source['prefix']}::{raw_name}"
+            service_name = f"{source['prefix']}--{raw_name}"
             response_class = result.metric.labels.get("response_code_class", "2xx")
             
             if result.points:
@@ -128,7 +128,7 @@ def fetch_and_write_metrics(request):
             raw_name = result.resource.labels.get(source['service_label'])
             if source['prefix'] == 'endpoints' and raw_name and raw_name.endswith('.googleapis.com'): continue
             if raw_name and result.points:
-                service_name = f"{source['prefix']}::{raw_name}"
+                service_name = f"{source['prefix']}--{raw_name}"
                 val = result.points[0].value.double_value
                 if source['prefix'] == 'endpoints': 
                     val *= 1000.0
@@ -157,7 +157,7 @@ def fetch_and_write_metrics(request):
             raw_name = result.resource.labels.get(source['service_label'])
             if source['prefix'] == 'endpoints' and raw_name and raw_name.endswith('.googleapis.com'): continue
             if raw_name and result.points:
-                service_name = f"{source['prefix']}::{raw_name}"
+                service_name = f"{source['prefix']}--{raw_name}"
                 val = result.points[0].value.double_value
                 if source['prefix'] == 'endpoints': 
                     val *= 1000.0
