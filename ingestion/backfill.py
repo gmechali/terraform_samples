@@ -9,7 +9,7 @@ PROJECT_ID = os.environ.get("PROJECT_ID", "datcom-ci")
 BQ_DATASET = os.environ.get("BQ_DATASET", "oncall_health")
 BQ_TABLE = os.environ.get("BQ_TABLE", "raw_metrics")
 
-def backfill(start_days_ago=23, end_days_ago=51):
+def backfill(start_days_ago=1, end_days_ago=51):
     monitoring_client = monitoring_v3.MetricServiceClient()
     bq_client = bigquery.Client(project=PROJECT_ID)
     project_name = f"projects/{PROJECT_ID}"
@@ -37,7 +37,7 @@ def backfill(start_days_ago=23, end_days_ago=51):
             "end_time": {"seconds": calendar.timegm(end_dt.timetuple()), "nanos": 0},
         })
 
-        metrics_by_service = defaultdict(lambda: {"total_requests": 0, "error_requests": 0, "p50_ms": None, "p95_ms": None, "project_id": "unknown"})
+        metrics_by_service = defaultdict(lambda: {"total_requests": 0, "error_5xx_requests": 0, "error_4xx_requests": 0, "p50_ms": None, "p95_ms": None, "project_id": "unknown"})
 
         # Process all metrics for this historical day
         for source in METRIC_SOURCES:
@@ -53,7 +53,9 @@ def backfill(start_days_ago=23, end_days_ago=51):
                         metrics_by_service[service_name]["total_requests"] += val
                         response_class = result.metric.labels.get("response_code_class", "2xx")
                         if str(response_class).startswith("5"):
-                            metrics_by_service[service_name]["error_requests"] += val
+                            metrics_by_service[service_name]["error_5xx_requests"] += val
+                        elif str(response_class).startswith("4"):
+                            metrics_by_service[service_name]["error_4xx_requests"] += val
                         pid = result.resource.labels.get("project_id")
                         if source['prefix'] == 'endpoints' and '.endpoints.' in raw_name:
                             try: pid = raw_name.split('.endpoints.')[1].split('.cloud.goog')[0]
@@ -96,7 +98,7 @@ def backfill(start_days_ago=23, end_days_ago=51):
             if agg["total_requests"] == 0:
                 availability = 1.0
             else:
-                availability = (agg["total_requests"] - agg["error_requests"]) / agg["total_requests"]
+                availability = (agg["total_requests"] - agg["error_5xx_requests"]) / agg["total_requests"]
                 
             metrics_data.append({
                 "timestamp": datetime.utcnow().isoformat(),
@@ -106,7 +108,9 @@ def backfill(start_days_ago=23, end_days_ago=51):
                 "archetype": "sync",
                 "availability_ratio": round(availability, 4),
                 "total_requests": agg["total_requests"],
-                "error_requests": agg["error_requests"],
+                "error_5xx_requests": agg["error_5xx_requests"],
+                "error_4xx_requests": agg["error_4xx_requests"],
+                "total_errors": agg["error_5xx_requests"] + agg["error_4xx_requests"],
                 "latency_p50_ms": round(agg["p50_ms"], 2) if agg["p50_ms"] else None,
                 "latency_p95_ms": round(agg["p95_ms"], 2) if agg["p95_ms"] else None
             })

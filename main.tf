@@ -55,7 +55,17 @@ resource "google_bigquery_table" "raw_metrics_table" {
     "mode": "NULLABLE"
   },
   {
-    "name": "error_requests",
+    "name": "error_5xx_requests",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "error_4xx_requests",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "total_errors",
     "type": "INTEGER",
     "mode": "NULLABLE"
   },

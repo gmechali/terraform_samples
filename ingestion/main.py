@@ -39,7 +39,7 @@ def fetch_and_write_metrics(request):
         }
     )
 
-    metrics_by_service = defaultdict(lambda: {"total_requests": 0, "error_requests": 0, "p50_ms": None, "p95_ms": None, "project_id": "unknown"})
+    metrics_by_service = defaultdict(lambda: {"total_requests": 0, "error_5xx_requests": 0, "error_4xx_requests": 0, "p50_ms": None, "p95_ms": None, "project_id": "unknown"})
 
     METRIC_SOURCES = [
         {
@@ -103,7 +103,9 @@ def fetch_and_write_metrics(request):
                 if result.resource.labels.get("project_id"):
                     metrics_by_service[service_name]["project_id"] = result.resource.labels.get("project_id")
                 if str(response_class).startswith("5"):
-                    metrics_by_service[service_name]["error_requests"] += val
+                    metrics_by_service[service_name]["error_5xx_requests"] += val
+                elif str(response_class).startswith("4"):
+                    metrics_by_service[service_name]["error_4xx_requests"] += val
 
         # B. Fetch P50 Latency
         p50_aggregation = monitoring_v3.Aggregation(
@@ -171,7 +173,7 @@ def fetch_and_write_metrics(request):
         if agg["total_requests"] == 0:
             availability = 1.0 # 100% if no traffic
         else:
-            availability = (agg["total_requests"] - agg["error_requests"]) / agg["total_requests"]
+            availability = (agg["total_requests"] - agg["error_5xx_requests"]) / agg["total_requests"]
             
         metrics_data.append({
             "timestamp": timestamp_now,
@@ -181,7 +183,9 @@ def fetch_and_write_metrics(request):
             "archetype": "sync", # Assuming all Cloud Run deployments are sync archetypes
             "availability_ratio": round(availability, 4),
             "total_requests": agg["total_requests"],
-            "error_requests": agg["error_requests"],
+            "error_5xx_requests": agg["error_5xx_requests"],
+            "error_4xx_requests": agg["error_4xx_requests"],
+            "total_errors": agg["error_5xx_requests"] + agg["error_4xx_requests"],
             "latency_p50_ms": round(agg["p50_ms"], 2) if agg["p50_ms"] else None,
             "latency_p95_ms": round(agg["p95_ms"], 2) if agg["p95_ms"] else None
         })

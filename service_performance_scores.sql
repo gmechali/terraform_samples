@@ -8,7 +8,9 @@ SELECT
   latency_p50_ms,
   latency_p95_ms,
   total_requests,
-  error_requests,
+  error_5xx_requests,
+  error_4xx_requests,
+  total_errors,
   500.0 as p50_target_ms,
   2500.0 as p95_target_ms,
   
