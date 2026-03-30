@@ -19,8 +19,8 @@ WITH base_metrics AS (
     -- Cold Start Fix: The denominator scales linearly from 1 (March 2026) up to 6 months max
     LEAST(6, DATE_DIFF(CURRENT_DATE(), DATE '2026-03-01', MONTH) + 1) AS valid_months_denominator
 
-  FROM `$${hub_project_id}.$${dataset_id}.service_performance_scores` r
-  LEFT JOIN `$${hub_project_id}.$${dataset_id}.deployment_events_raw` d
+  FROM `${hub_project_id}.${dataset_id}.service_performance_scores` r
+  LEFT JOIN `${hub_project_id}.${dataset_id}.deployment_events_raw` d
     ON r.service_name = d.service_name
     AND DATE(d.publish_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 MONTH)
   GROUP BY 
