@@ -188,6 +188,33 @@ resource "google_pubsub_subscription" "cloud_deploy_bq_sub" {
 }
 
 # 4d. Unified Deployment Events View
+# 4. Central Environment Classifier (UDF)
+resource "google_bigquery_routine" "get_environment" {
+  dataset_id      = google_bigquery_dataset.health_metrics.dataset_id
+  routine_id      = "get_environment"
+  routine_type    = "SCALAR_FUNCTION"
+  language        = "SQL"
+  
+  arguments {
+    name      = "service_name_input"
+    data_type = "{\"typeKind\" :  \"STRING\"}"
+  }
+  
+  return_type = "{\"typeKind\" :  \"STRING\"}"
+
+  definition_body = <<-EOS
+    CASE
+      WHEN REGEXP_CONTAINS(service_name_input, r"(?i)prod") THEN "Prod"
+      WHEN REGEXP_CONTAINS(service_name_input, r"(?i)--api\.datacommons\.org") THEN "Prod"
+      WHEN REGEXP_CONTAINS(service_name_input, r"(?i)autorater") THEN "Prod"
+      WHEN REGEXP_CONTAINS(service_name_input, r"(?i)staging") THEN "Staging"
+      WHEN REGEXP_CONTAINS(service_name_input, r"(?i)autopush") THEN "Autopush"
+      WHEN REGEXP_CONTAINS(service_name_input, r"(?i)dev") THEN "Dev"
+      ELSE "Unknown"
+    END
+  EOS
+}
+
 resource "google_bigquery_table" "deployment_events_raw_view" {
   dataset_id = google_bigquery_dataset.health_metrics.dataset_id
   table_id   = "deployment_events_raw"
@@ -204,7 +231,8 @@ resource "google_bigquery_table" "deployment_events_raw_view" {
 
   depends_on = [
     google_bigquery_table.cloud_build_raw,
-    google_bigquery_table.cloud_deploy_raw
+    google_bigquery_table.cloud_deploy_raw,
+    google_bigquery_routine.get_environment
   ]
 }
 
@@ -224,6 +252,10 @@ resource "google_bigquery_table" "service_performance_scores_view" {
   }
 
   deletion_protection = false
+
+  depends_on = [
+    google_bigquery_routine.get_environment
+  ]
 }
 
 # 6. Category 3: Observability Google Sheet (External Table)

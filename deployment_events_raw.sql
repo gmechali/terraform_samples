@@ -4,15 +4,7 @@ SELECT
   JSON_EXTRACT_SCALAR(data, '$.status') AS status,
   -- Assuming you use a tag shaped like 'cloudrun--dc-dev'
   REPLACE(JSON_EXTRACT_SCALAR(data, '$.tags[0]'), '::', '--') AS service_name,
-  CASE
-    WHEN REGEXP_CONTAINS(REPLACE(JSON_EXTRACT_SCALAR(data, '$.tags[0]'), '::', '--'), r"(?i)prod") THEN "Prod"
-    WHEN REGEXP_CONTAINS(REPLACE(JSON_EXTRACT_SCALAR(data, '$.tags[0]'), '::', '--'), r"(?i)--api\.datacommons\.org") THEN "Prod"
-    WHEN REGEXP_CONTAINS(REPLACE(JSON_EXTRACT_SCALAR(data, '$.tags[0]'), '::', '--'), r"(?i)autorater") THEN "Prod"
-    WHEN REGEXP_CONTAINS(REPLACE(JSON_EXTRACT_SCALAR(data, '$.tags[0]'), '::', '--'), r"(?i)staging") THEN "Staging"
-    WHEN REGEXP_CONTAINS(REPLACE(JSON_EXTRACT_SCALAR(data, '$.tags[0]'), '::', '--'), r"(?i)autopush") THEN "Autopush"
-    WHEN REGEXP_CONTAINS(REPLACE(JSON_EXTRACT_SCALAR(data, '$.tags[0]'), '::', '--'), r"(?i)dev") THEN "Dev"
-    ELSE "Unknown"
-  END AS environment
+  `${hub_project_id}.${dataset_id}.get_environment`(REPLACE(JSON_EXTRACT_SCALAR(data, '$.tags[0]'), '::', '--')) AS environment
 FROM `${hub_project_id}.${dataset_id}.cloud_builds_raw`
 WHERE IFNULL(JSON_EXTRACT_SCALAR(data, '$.buildTriggerId'), '') NOT LIKE 'cloud-deploy-project-%'
   AND IFNULL(JSON_EXTRACT_SCALAR(data, '$.tags[0]'), '') NOT LIKE 'cloud-deploy-%'
@@ -28,15 +20,7 @@ SELECT
   service_name,
   
   -- Inject Environment mapping explicitly for Looker Studio Page Filtering
-  CASE
-    WHEN REGEXP_CONTAINS(service_name, r"(?i)prod") THEN "Prod"
-    WHEN REGEXP_CONTAINS(service_name, r"(?i)--api\.datacommons\.org") THEN "Prod"
-    WHEN REGEXP_CONTAINS(service_name, r"(?i)autorater") THEN "Prod"
-    WHEN REGEXP_CONTAINS(service_name, r"(?i)staging") THEN "Staging"
-    WHEN REGEXP_CONTAINS(service_name, r"(?i)autopush") THEN "Autopush"
-    WHEN REGEXP_CONTAINS(service_name, r"(?i)dev") THEN "Dev"
-    ELSE "Unknown"
-  END AS environment
+  `${hub_project_id}.${dataset_id}.get_environment`(service_name) AS environment
 
 FROM `${hub_project_id}.${dataset_id}.cloud_deploy_raw`,
 UNNEST(

@@ -3,15 +3,7 @@ SELECT
   service_name,
   project_id,
   archetype,
-  CASE
-    WHEN REGEXP_CONTAINS(service_name, r"(?i)prod") THEN "Prod"
-    WHEN REGEXP_CONTAINS(service_name, r"(?i)--api\.datacommons\.org") THEN "Prod"
-    WHEN REGEXP_CONTAINS(service_name, r"(?i)autorater") THEN "Prod"
-    WHEN REGEXP_CONTAINS(service_name, r"(?i)staging") THEN "Staging"
-    WHEN REGEXP_CONTAINS(service_name, r"(?i)autopush") THEN "Autopush"
-    WHEN REGEXP_CONTAINS(service_name, r"(?i)dev") THEN "Dev"
-    ELSE "Unknown"
-  END AS environment,
+  `${hub_project_id}.${dataset_id}.get_environment`(service_name) AS environment,
   availability_ratio,
   latency_p50_ms,
   latency_p95_ms,
