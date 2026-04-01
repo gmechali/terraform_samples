@@ -33,6 +33,7 @@ SELECT
   COALESCE(p.delivery_success_score, 0.0) AS pipeline_delivery_success_score,
   COALESCE(p.code_lead_time_score, 0.0) AS pipeline_code_lead_time_score,
   COALESCE(o.feature_flag_score, 0.0) AS pipeline_feature_flag_score,
+  COALESCE(p.total_rollbacks_30d, 0) AS total_rollbacks_30d,
   p.days_since_last_deploy,
   p.months_deployed_in_window,
   p.last_successful_deployment,

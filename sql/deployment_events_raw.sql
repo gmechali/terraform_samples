@@ -4,10 +4,17 @@ SELECT
   JSON_EXTRACT_SCALAR(data, '$.status') AS status,
   -- Assuming you use a tag shaped like 'cloudrun--dc-dev'
   REPLACE(JSON_EXTRACT_SCALAR(data, '$.tags[0]'), '::', '--') AS service_name,
-  `${hub_project_id}.${dataset_id}.get_environment`(REPLACE(JSON_EXTRACT_SCALAR(data, '$.tags[0]'), '::', '--')) AS environment
+  `${hub_project_id}.${dataset_id}.get_environment`(REPLACE(JSON_EXTRACT_SCALAR(data, '$.tags[0]'), '::', '--')) AS environment,
+  FALSE AS is_rollback,
+  CASE 
+    WHEN JSON_EXTRACT_SCALAR(data, '$.status') IN ('FAILURE', 'TIMEOUT') THEN 'Failure'
+    ELSE 'Success'
+  END AS event_category
 FROM `${hub_project_id}.${dataset_id}.cloud_builds_raw`
 WHERE IFNULL(JSON_EXTRACT_SCALAR(data, '$.buildTriggerId'), '') NOT LIKE 'cloud-deploy-project-%'
   AND IFNULL(JSON_EXTRACT_SCALAR(data, '$.tags[0]'), '') NOT LIKE 'cloud-deploy-%'
+  AND IFNULL(JSON_EXTRACT_SCALAR(data, '$.tags[0]'), '') NOT LIKE 'trigger-%'
+  AND IFNULL(JSON_EXTRACT_SCALAR(data, '$.tags[0]'), '') != ''
   AND JSON_EXTRACT_SCALAR(data, '$.status') IN ('SUCCESS', 'FAILURE', 'TIMEOUT')
 UNION ALL
 
@@ -20,7 +27,13 @@ SELECT
   service_name,
   
   -- Inject Environment mapping explicitly for Looker Studio Page Filtering
-  `${hub_project_id}.${dataset_id}.get_environment`(service_name) AS environment
+  `${hub_project_id}.${dataset_id}.get_environment`(service_name) AS environment,
+  IF(JSON_EXTRACT_SCALAR(attributes, '$.RollbackOfRollout') IS NOT NULL, TRUE, FALSE) AS is_rollback,
+  CASE 
+    WHEN JSON_EXTRACT_SCALAR(attributes, '$.RollbackOfRollout') IS NOT NULL THEN 'Rollback'
+    WHEN UPPER(JSON_EXTRACT_SCALAR(attributes, '$.Action')) = 'FAILED' THEN 'Failure'
+    ELSE 'Success'
+  END AS event_category
 
 FROM `${hub_project_id}.${dataset_id}.cloud_deploy_raw`,
 UNNEST(

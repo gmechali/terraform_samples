@@ -170,18 +170,13 @@ def fetch_and_write_metrics(request):
     timestamp_now = datetime.utcnow().isoformat()
     target_date = yesterday.strftime('%Y-%m-%d')
     for service, agg in metrics_by_service.items():
-        if agg["total_requests"] == 0:
-            availability = 1.0 # 100% if no traffic
-        else:
-            availability = (agg["total_requests"] - agg["error_5xx_requests"]) / agg["total_requests"]
-            
         metrics_data.append({
             "timestamp": timestamp_now,
             "target_date": target_date,
             "project_id": agg["project_id"],
             "service_name": service,
             "archetype": "sync", # Assuming all Cloud Run deployments are sync archetypes
-            "availability_ratio": round(availability, 4),
+            "availability_ratio": None, # Calculated on the fly in BQ View!
             "total_requests": agg["total_requests"],
             "error_5xx_requests": agg["error_5xx_requests"],
             "error_4xx_requests": agg["error_4xx_requests"],

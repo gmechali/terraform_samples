@@ -1,9 +1,31 @@
+WITH base_metrics AS (
+  SELECT
+    target_date,
+    service_name,
+    project_id,
+    archetype,
+    `${hub_project_id}.${dataset_id}.get_environment`(service_name) AS environment,
+    
+    -- Calculated Availability on the fly!
+    IFNULL((total_requests - error_5xx_requests - error_4xx_requests) / NULLIF(total_requests, 0), 1.0) AS availability_ratio,
+    
+    latency_p50_ms,
+    latency_p95_ms,
+    total_requests,
+    error_5xx_requests,
+    error_4xx_requests,
+    total_errors,
+    500.0 as p50_target_ms,
+    2500.0 as p95_target_ms
+  FROM `${hub_project_id}.${dataset_id}.${table_id}`
+)
+
 SELECT
   target_date,
   service_name,
   project_id,
   archetype,
-  `${hub_project_id}.${dataset_id}.get_environment`(service_name) AS environment,
+  environment,
   availability_ratio,
   latency_p50_ms,
   latency_p95_ms,
@@ -11,23 +33,23 @@ SELECT
   error_5xx_requests,
   error_4xx_requests,
   total_errors,
-  500.0 as p50_target_ms,
-  2500.0 as p95_target_ms,
+  p50_target_ms,
+  p95_target_ms,
   
   -- Performance Score: 65% Availability (Bounded Decay: 99% = 0 pts) + 5% P50 Latency + 20% P95 Latency + 10% Log Health (Placeholder 1.0)
   (
     (GREATEST(0.0, 1.0 - ((1.0 - availability_ratio) * 100.0)) * 0.65) + 
     (
       IF(latency_p50_ms IS NULL, 1.0, 
-        IF(latency_p50_ms < 500.0, 1.0, (500.0 / latency_p50_ms))
+        IF(latency_p50_ms < p50_target_ms, 1.0, (p50_target_ms / latency_p50_ms))
       ) * 0.05
     ) + 
     (
       IF(latency_p95_ms IS NULL, 1.0, 
-        IF(latency_p95_ms < 2500.0, 1.0, (2500.0 / latency_p95_ms))
+        IF(latency_p95_ms < p95_target_ms, 1.0, (p95_target_ms / latency_p95_ms))
       ) * 0.20
     ) + 
     (1.0 * 0.10)
   ) * 100.0 AS performance_score
 
-FROM `${hub_project_id}.${dataset_id}.${table_id}`
+FROM base_metrics

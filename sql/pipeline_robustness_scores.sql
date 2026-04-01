@@ -16,6 +16,9 @@ WITH base_metrics AS (
     -- Delivery Success Logic defaults to 0.0 if never deployed
     IFNULL((COUNTIF(d.status IN ('SUCCESS', 'SUCCEEDED')) / NULLIF(COUNT(d.publish_time), 0)) * 100.0, 0.0) AS raw_delivery_success,
     
+    -- Track rollbacks within the 30-day penalty window
+    COUNTIF(d.is_rollback = TRUE AND DATE_DIFF(CURRENT_DATE(), DATE(d.publish_time), DAY) <= 30) AS total_rollbacks_30d,
+    
     -- Cold Start Fix: The denominator scales linearly from 1 (March 2026) up to 6 months max
     LEAST(6, DATE_DIFF(CURRENT_DATE(), DATE '2026-03-01', MONTH) + 1) AS valid_months_denominator
 
@@ -35,8 +38,15 @@ SELECT
   days_since_last_deploy,
   months_deployed_in_window,
   
-  -- Calculated Delivery Success Score
-  raw_delivery_success AS delivery_success_score,
+  -- Calculated Delivery Success Score (Pre-Rollback avg)
+  raw_delivery_success,
+  total_rollbacks_30d,
+
+  -- Computed Rollback Score (0 rollbacks = 100%, 1 = 50%, 2+ = 0%)
+  IF(total_rollbacks_30d = 0, 100.0, IF(total_rollbacks_30d = 1, 50.0, 0.0)) AS rollback_score,
+  
+  -- Final Delivery Success Score as the average of Raw Success and Rollback Score
+  ((raw_delivery_success + IF(total_rollbacks_30d = 0, 100.0, IF(total_rollbacks_30d = 1, 50.0, 0.0))) / 2.0) AS delivery_success_score,
   
   -- Calculated Deployment Cadence Score (> 30 days => 0)
   IF(
@@ -49,16 +59,15 @@ SELECT
   0.0 AS code_lead_time_score,
   0.0 AS feature_flag_score,
   
-  -- Final Pipeline Robustness Score based on Archetype
   -- Sync / API: 30% Success, 30% Cadence, 30% Lead Time, 10% Feature Flag
   -- Async: 30% Success, 40% Cadence, 30% Lead Time
   IF(
     REGEXP_CONTAINS(archetype, r"(?i)async|pipeline|cron|ingest"),
-    (raw_delivery_success * 0.3) + 
+    (((raw_delivery_success + IF(total_rollbacks_30d = 0, 100.0, IF(total_rollbacks_30d = 1, 50.0, 0.0))) / 2.0) * 0.3) + 
     (IF(days_since_last_deploy > 30, 0.0, (months_deployed_in_window / valid_months_denominator) * 100.0) * 0.4) + 
     (0.0 * 0.3),
     
-    (raw_delivery_success * 0.3) + 
+    (((raw_delivery_success + IF(total_rollbacks_30d = 0, 100.0, IF(total_rollbacks_30d = 1, 50.0, 0.0))) / 2.0) * 0.3) + 
     (IF(days_since_last_deploy > 30, 0.0, (months_deployed_in_window / valid_months_denominator) * 100.0) * 0.3) + 
     (0.0 * 0.3) + 
     (0.0 * 0.1)
